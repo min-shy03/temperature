@@ -111,6 +111,8 @@ def stream() :
 
         app = current_app._get_current_object()
 
+        db.session.remove()
+
         # listen()이 호출되면 센서에서 데이터가 올 때까지 일시 정지 후 메세지가 오면 수신
         # for문에 수신한 메세지 객체 넘겨줌
         # 이 for문은 무한 반복하며 계속 신호를 받는다.
@@ -132,6 +134,8 @@ def stream() :
             # 그래서 이런식으로 제대로 왔는지 확인이 가능한 것!
             if message['type'] != 'message' :
                 continue
+
+            db.session.remove()
             
             # 어떤 채널에서 왔는지도 구분이 가능하다.
             channel = message['channel']

@@ -7,6 +7,7 @@
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat-square&logo=mysql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7.0-DC382D?style=flat-square&logo=redis&logoColor=white)
 
+[![Service Link](https://img.shields.io/badge/Service_Live-gsc--web.cloud-6772E5?style=for-the-badge&logo=google-cloud&logoColor=white)](https://gsc-web.cloud)
 <br>
 
 **언어 선택 (Language):**

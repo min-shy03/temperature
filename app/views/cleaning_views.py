@@ -110,115 +110,69 @@ def manage_mamber(student_id) :
             return jsonify({"success" : False, "message" : f"삭제 실패 {str(e)}"}), 500
         
 @bp.route('/api/draw', methods=['POST'])
-def draw() :
+def draw():
     grade = request.args.get('grade')
-
-    # 학년 모든 멤버 가져오기
     all_members = ClassMember.query.filter_by(grade=grade).all()
+    
+    # [수정] 쿼리문으로 강제 업데이트하지 않고, 객체를 하나씩 '직접' 초기화합니다.
+    # 이렇게 해야 나중에 다시 True로 바꿨을 때 파이썬이 "변경사항 있음!"으로 인식해서 저장합니다.
+    for m in all_members:
+        m.this_week = False 
 
-    # <조건>
-    # 1. 그룹에는 무조건 여자가 1명은 들어가야 한다.
-    # 2. len(unchecked_members)가 4 보다 작으면 나머지 인원을 이번주에 넣고 
-    #    check 리셋 후 남은 멤버 수 만큼 랜덤으로 낑겨 넣는다.
-    # 3. 저번 주에 한 사람들은 이번 주 명단에서 제외 한다.
-
-    # 안 한 사람 리스트 (뽑아야 할 사람 리스트)
-    unchecked_list = [member for member in all_members if member.check == False]
-
-    # 저번주에 한 사람 리스트
-    last_week_list = [member for member in all_members if member.this_week]
-
-    # 이번주에 할 사람 리스트
+    # 1. 후보 확인 (check가 False인 사람)
+    candidates = [m for m in all_members if not m.check]
     this_week_list = []
 
-    # 뽑아야 할 사람 수 (기본 4명)
-    num_to_draw = 4
-
-    # 뽑혀야 하는 인원 리스트 
-    deserve_list = []
-
-    # 안 한 사람이 4명 미만이면
-    if len(unchecked_list) < 4 :
-        # 이번주 명단에 일단 다 넣기
-        this_week_list.extend(unchecked_list)
-
-        # 뽑아야 할 인원 수 계산
-        num_to_draw -= len(unchecked_list)
-
-        # 모든 인원 전부 check 변경
-        for member in all_members :
-            member.check = False
-
-        # 저번주에 했던 사람은 제외
-        for member in last_week_list :
-            member.check = True
-
-        # 이번 주에 들어간 사람, 저번 주에 했던 사람 제외하고 다 뽑힐 가능성이 있는 사람으로 취급
-        deserve_list = [member for member in all_members if member.check == False and member not in this_week_list]
-
-    # 일반 경우
-    else :
-        # 안 한 사람 리스트가 곧 뽑힐 사람
-        deserve_list = unchecked_list
-
-    # 이번주 당번에 여자가 있는지 확인
-    is_in_woman = any(member.gender == "여" for member in this_week_list)
-
-    # 뽑힐 사람 중 여자와 남자 구분
-    deserve_woman_list = [member for member in deserve_list if member.gender == "여"]
-    deserve_man_list = [member for member in deserve_list if member.gender == "남"]
-
-    # 최종 뽑을 사람 리스트
-    final_list = []
-
-    # 만약 이번주 당번에 여자가 없다면
-    if not is_in_woman :
-        # 뽑을 수 있는 여자가 있다면
-        if deserve_woman_list :
-            # 여자 리스트 중 한 명을 뽑고 당번에 넣기
-            this_week_woman = random.choice(deserve_woman_list)
-            this_week_list.append(this_week_woman)
-            num_to_draw -= 1
-
-            # 마지막으로 뽑힐 사람은 남자 뿐
-            final_list = deserve_man_list
-
-        # 뽑을 수 있는 여자가 없다면
-        else :
-            # 어쩔 수 없이 남자만 뽑음
-            final_list = deserve_man_list
-    # 이번 주 당번에 이미 여자가 있다면
-    else :
-        # 무조건 남자만 뽑음
-        final_list = deserve_man_list
-
-    # (혹시 모를 예외 처리) 만약 남은 사람이 뽑을 사람보다 크면 뽑을 사람을 남은 사람만큼 줄이기
-    if len(final_list) < num_to_draw :
-        num_to_draw = len(final_list)
-
-    # 아직 뽑을 사람이 남았다면
-    if num_to_draw > 0 :
-        # 남은 인원 만큼 마무리 뽑기
-        final_member = random.sample(final_list, num_to_draw)
-        this_week_list.extend(final_member)
-    
-    try :
-        for member in last_week_list :
-            member.this_week = False
+    # ---------------------------------------------------------
+    # [핵심] 후보가 4명 안 되면? -> 리셋해서 강제로 채움
+    # ---------------------------------------------------------
+    if len(candidates) < 4:
+        # 1단계: 남은 후보는 일단 다 당번 시킴
+        this_week_list.extend(candidates)
         
-        for member in this_week_list :
-            member.this_week = True
-            member.check = True
+        # 2단계: 몇 명 더 필요한지 계산
+        needed = 4 - len(this_week_list)
+        
+        # 3단계: 전체 리셋! (모두를 다시 후보 상태로 만듦)
+        for m in all_members:
+            m.check = False
+        
+        # 4단계: 방금 뽑힌 애들(this_week_list) 뺀 나머지 중에서 부족분 채우기
+        pool = [m for m in all_members if m not in this_week_list]
+        
+        # 인원이 충분하면 랜덤 추출, 부족하면 전원 투입
+        if len(pool) >= needed:
+            extras = random.sample(pool, needed)
+            this_week_list.extend(extras)
+        else:
+            this_week_list.extend(pool)
 
+    # ---------------------------------------------------------
+    # [일반] 후보가 4명 이상이면? -> 그냥 4명 뽑음
+    # ---------------------------------------------------------
+    else:
+        this_week_list = random.sample(candidates, 4)
+
+    # 2. 결과 확정 (이번에 뽑힌 4명 처리)
+    for m in this_week_list:
+        m.this_week = True  # 화면에 '이번 주 당번' 표시
+        m.check = True      # '한 사람' 목록으로 이동
+
+    try:
         db.session.commit()
-
+        
+        # 요청하신 메시지 형식 100% 유지
         new_member_list = sorted([member.name for member in this_week_list])
+        
+        return jsonify({
+            'success': True, 
+            'message': "청소 당번을 새로 뽑았습니다.", 
+            'new_members': new_member_list
+        })
 
-        return jsonify({'success' : True, 'message' : "청소 당번을 새로 뽑았습니다.", 'new_members' : new_member_list})
-    
-    except Exception as e :
+    except Exception as e:
         db.session.rollback()
-        return jsonify({'success' : False, 'message' : f'DB 저장 오류 {str(e)}'}), 500
+        return jsonify({'success': False, 'message': f'DB 저장 오류 {str(e)}'}), 500
 
 # 학년 교체 API
 @bp.route('api/promote', methods=['POST'])

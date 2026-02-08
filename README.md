@@ -7,6 +7,11 @@
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat-square&logo=mysql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7.0-DC382D?style=flat-square&logo=redis&logoColor=white)
 
+<br>
+
+**언어 선택 (Language):**
+**🇰🇷 한국어** | [🇯🇵 日本語](./README_JP.md)
+
 ---
 
 ## 💡 프로젝트 소개
